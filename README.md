@@ -69,6 +69,15 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
+### Release notes（更新日志）
+
+Release notes 不提交到仓库。请将更新日志保存在本地 `ReleaseN/`，并使用“注释 tag”作为发布说明来源：
+
+```powershell
+git tag -a v1.0.0 -F ReleaseN/RELEASE_NOTES_v1.0.0.md
+git push origin v1.0.0
+```
+
 ## 安装与启用
 
 1. 安装 APK

@@ -20,6 +20,9 @@ jobs:
       LANG: C.UTF-8
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - uses: actions/setup-java@v4
         with:
@@ -93,12 +96,12 @@ jobs:
       - name: Prepare release notes
         run: |
           version="${GITHUB_REF_NAME}"
-          notes_file="RELEASE_NOTES_${version}.md"
           out="dist/release_notes.md"
 
-          if [ -f "$notes_file" ]; then
-            cp "$notes_file" "$out"
-          else
+          # Prefer annotated tag message as release notes, so notes don't need to live in the repo.
+          git tag -l --format='%(contents)' "$version" > "$out"
+
+          if [ ! -s "$out" ]; then
             {
               echo "# ${version}"
               echo
