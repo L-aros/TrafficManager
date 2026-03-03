@@ -55,18 +55,17 @@ keyPassword=***
 
 ## 自动发布 Release（GitHub Actions）
 
-推荐使用 `v*` 标签触发自动发布。
+默认每次提交到 `main` 会自动构建并发布一个 Release（用于持续交付）。
 
 1. 在 GitHub Actions Secrets 中设置：
    - `KEYSTORE_BASE64`
    - `KEYSTORE_PASSWORD`
    - `KEY_ALIAS`
    - `KEY_PASSWORD`
-2. 创建 tag 并推送：
+2. 推送代码到 `main`：
 
 ```powershell
-git tag v0.1.0
-git push origin v0.1.0
+git push origin main
 ```
 
 ## 安装与启用
