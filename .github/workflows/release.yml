@@ -2,15 +2,22 @@
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - "main"
+  workflow_dispatch: {}
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-main
+  cancel-in-progress: true
+
 jobs:
   build_release:
     runs-on: ubuntu-latest
+    env:
+      LANG: C.UTF-8
     steps:
       - uses: actions/checkout@v4
 
@@ -19,8 +26,20 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
+      - name: Compute release metadata
+        id: meta
+        run: |
+          short="${GITHUB_SHA::7}"
+          echo "short=$short" >> "$GITHUB_OUTPUT"
+          echo "tag=auto-${GITHUB_RUN_NUMBER}-$short" >> "$GITHUB_OUTPUT"
+          echo "name=自动构建 auto-${GITHUB_RUN_NUMBER}-$short" >> "$GITHUB_OUTPUT"
+
       - name: Decode keystore
         run: |
+          test -n "${{ secrets.KEYSTORE_BASE64 }}"
+          test -n "${{ secrets.KEYSTORE_PASSWORD }}"
+          test -n "${{ secrets.KEY_ALIAS }}"
+          test -n "${{ secrets.KEY_PASSWORD }}"
           mkdir -p keystore
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore/release.keystore
           test -s keystore/release.keystore
@@ -58,5 +77,14 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            自动构建发布（每次提交 main 自动发布）。
+
+            - 提交：${{ github.sha }}
+            - 触发：${{ github.actor }}
+            - 工作流：${{ github.workflow }} / run ${{ github.run_number }}
           files: |
             app/build/outputs/apk/release/*.apk
