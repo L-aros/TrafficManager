@@ -32,14 +32,13 @@ jobs:
           short="${GITHUB_SHA::7}"
           echo "short=$short" >> "$GITHUB_OUTPUT"
           echo "tag=auto-${GITHUB_RUN_NUMBER}-$short" >> "$GITHUB_OUTPUT"
-          echo "name=自动构建 auto-${GITHUB_RUN_NUMBER}-$short" >> "$GITHUB_OUTPUT"
 
       - name: Decode keystore
         run: |
-          test -n "${{ secrets.KEYSTORE_BASE64 }}"
-          test -n "${{ secrets.KEYSTORE_PASSWORD }}"
-          test -n "${{ secrets.KEY_ALIAS }}"
-          test -n "${{ secrets.KEY_PASSWORD }}"
+          [ -n "${{ secrets.KEYSTORE_BASE64 }}" ] || { echo "::error::Missing secret KEYSTORE_BASE64"; exit 1; }
+          [ -n "${{ secrets.KEYSTORE_PASSWORD }}" ] || { echo "::error::Missing secret KEYSTORE_PASSWORD"; exit 1; }
+          [ -n "${{ secrets.KEY_ALIAS }}" ] || { echo "::error::Missing secret KEY_ALIAS"; exit 1; }
+          [ -n "${{ secrets.KEY_PASSWORD }}" ] || { echo "::error::Missing secret KEY_PASSWORD"; exit 1; }
           mkdir -p keystore
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore/release.keystore
           test -s keystore/release.keystore
@@ -78,7 +77,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
-          name: ${{ steps.meta.outputs.name }}
+          name: 自动构建 ${{ steps.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
           body: |
             自动构建发布（每次提交 main 自动发布）。
