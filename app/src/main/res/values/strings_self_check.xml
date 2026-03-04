@@ -4,6 +4,10 @@
     <string name="btn_refresh_self_check">刷新自检</string>
 
     <string name="self_check_permissions_pending">权限：未检测</string>
+    <string name="self_check_location_permission_pending">定位权限：未检测</string>
+    <string name="self_check_nearby_permission_pending">附近设备权限：未检测</string>
+    <string name="self_check_location_pending">定位开关：未检测</string>
+    <string name="self_check_location_hint_pending">Wi‑Fi 扫描条件：未检测</string>
     <string name="self_check_wifi_pending">Wi-Fi：未检测</string>
     <string name="self_check_slot_pending">数据卡：未检测</string>
     <string name="self_check_enabled_pending">自动切卡：未检测</string>
@@ -20,6 +24,11 @@
     <string name="label_root_unavailable">不可用</string>
     <string name="label_permissions_ok">已授予</string>
     <string name="label_permissions_missing">缺少: %1$s</string>
+    <string name="label_permission_granted">已授予</string>
+    <string name="label_permission_missing_short">缺少</string>
+    <string name="label_permission_not_required">不需要</string>
+    <string name="label_location_on">已开启</string>
+    <string name="label_location_off">已关闭</string>
     <string name="label_no_wifi">未连接</string>
     <string name="label_last_switch_none">无</string>
 
@@ -31,6 +40,11 @@
     <string name="perm_post_notifications">通知</string>
 
     <string name="self_check_permissions">权限：%1$s</string>
+    <string name="self_check_location_permission">定位权限：%1$s</string>
+    <string name="self_check_nearby_permission">附近设备权限：%1$s</string>
+    <string name="self_check_location">定位开关：%1$s</string>
+    <string name="self_check_location_hint_ok">Wi‑Fi 扫描条件：正常</string>
+    <string name="self_check_location_hint_bad">Wi‑Fi 扫描条件：可能受限</string>
     <string name="self_check_wifi">Wi-Fi：%1$s</string>
     <string name="self_check_slot">数据卡：%1$s</string>
     <string name="self_check_enabled">自动切卡：%1$s</string>

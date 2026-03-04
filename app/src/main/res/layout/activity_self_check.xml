@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_app_gradient"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/selfCheckHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:minHeight="56dp"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="16dp">
+
+        <ImageButton
+            android:id="@+id/selfCheckBackButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/settings_item_self_check"
+            android:padding="8dp"
+            android:src="@drawable/ic_chevron_left"
+            android:tint="@color/on_background" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/settings_item_self_check"
+            android:textColor="@color/on_background"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/selfCheckScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingStart="16dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardSelfCheckPanel"
+                style="@style/Widget.Traffic.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/title_self_check"
+                        android:textColor="@color/on_background"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/desc_self_check"
+                        android:textColor="@color/muted"
+                        android:textSize="13sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/selfCheckRefreshButton"
+                        style="@style/Widget.Traffic.ButtonOutline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/btn_refresh_self_check" />
+
+                    <TextView
+                        android:id="@+id/selfCheckPermissions"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/self_check_permissions_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckLocationPermission"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_location_permission_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckNearbyPermission"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_nearby_permission_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckLocation"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_location_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckLocationHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_location_hint_pending"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckWifi"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_wifi_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckSlot"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_slot_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckEnabled"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_enabled_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckPowerMode"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_power_mode_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckRules"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_rules_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckRoot"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_root_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/selfCheckLastSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/self_check_last_switch_pending"
+                        android:textColor="@color/on_background"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</LinearLayout>

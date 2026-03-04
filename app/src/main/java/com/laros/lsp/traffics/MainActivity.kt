@@ -7,7 +7,6 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.net.ConnectivityManager
 import android.net.Network
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -20,7 +19,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -40,7 +38,6 @@ import com.laros.lsp.traffics.databinding.ActivityMainBinding
 import com.laros.lsp.traffics.databinding.PageAdvancedContentBinding
 import com.laros.lsp.traffics.databinding.PageHomeContentBinding
 import com.laros.lsp.traffics.databinding.PageRulesContentBinding
-import com.laros.lsp.traffics.log.LogStore
 import com.laros.lsp.traffics.model.AppConfig
 import com.laros.lsp.traffics.model.SwitchRule
 import com.laros.lsp.traffics.service.AutoSwitchService
@@ -53,7 +50,6 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -61,16 +57,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rulesBinding: PageRulesContentBinding
     private lateinit var advancedBinding: PageAdvancedContentBinding
     private lateinit var configStore: ConfigStore
-    private lateinit var logStore: LogStore
     private lateinit var wifiSnapshotProvider: WifiSnapshotProvider
     private lateinit var slotResolver: DataSlotResolver
-    private var updatingNoWifiSwitch = false
-    private var updatingNoWifiSlot = false
     private var updatingLiveStatus = false
     private var liveStatusJob: Job? = null
     private var statusRevertJob: Job? = null
-    private var updatingPowerMode = false
-    private var updatingSelfCheck = false
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var lastNetCallbackAtMs: Long = 0L
     private val selectedRuleIds = mutableSetOf<String>()
@@ -102,18 +93,13 @@ class MainActivity : AppCompatActivity() {
         advancedBinding = PageAdvancedContentBinding.bind(binding.pageAdvanced)
         setupSystemBars()
         configStore = ConfigStore(this)
-        logStore = LogStore(this)
         wifiSnapshotProvider = WifiSnapshotProvider(this)
         slotResolver = DataSlotResolver(this)
 
         requestRuntimePermissions()
-        loadConfigToEditor()
-        bindNoWifiImmediateSwitch()
-        bindNoWifiSlotGroup()
         bindDelayConfig()
-        bindPowerModeGroup()
-        bindSelfCheck()
         bindBottomNav()
+        applyInitialPageSelection()
         bindClicks()
         updateLiveStatus()
         refreshRuleList()
@@ -131,41 +117,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindClicks() {
-        advancedBinding.saveButton.setOnClickListener {
-            val raw = advancedBinding.configEditor.text?.toString().orEmpty()
-            val result = configStore.saveRawJson(raw)
-            if (result.isSuccess) {
-                showStatus(getString(R.string.status_config_saved))
-                val cfg = configStore.load()
-                syncNoWifiImmediateSwitch(cfg.noWifiImmediate)
-                syncNoWifiSlot(cfg.noWifiSlot)
-                refreshRuleList()
-            } else {
-                val err = result.exceptionOrNull()?.message ?: getString(R.string.label_unknown)
-                showStatus(getString(R.string.status_config_save_failed, err))
-            }
+        advancedBinding.settingsListSelfCheck.setOnClickListener {
+            startActivity(Intent(this, SelfCheckActivity::class.java))
+        }
+        advancedBinding.settingsListAdvanced.setOnClickListener {
+            startActivity(Intent(this, AdvancedConfigActivity::class.java))
+        }
+        advancedBinding.settingsListAbout.setOnClickListener {
+            startActivity(Intent(this, AboutActivity::class.java))
+        }
+        advancedBinding.settingsListDisclaimer.setOnClickListener {
+            showDisclaimerDialog()
         }
 
         homeBinding.startButton.setOnClickListener {
-            val current = parseConfigFromEditor().getOrElse { configStore.load() }
-            persistConfig(current.copy(enabled = true))
-            showStatus(getString(R.string.status_auto_switch_enabled))
+            val current = configStore.load()
+            val next = current.copy(enabled = true)
+            persistConfig(next)
+            showStatus(getString(R.string.status_auto_switch_enabled_with_mode, modeDetail(next.powerSaveMode)))
             startModeWorker("manual_start")
         }
 
         homeBinding.stopButton.setOnClickListener {
-            val current = parseConfigFromEditor().getOrElse { configStore.load() }
+            val current = configStore.load()
             persistConfig(current.copy(enabled = false))
             stopForegroundServiceIfNeeded()
             PowerSaveScheduler.cancel(applicationContext)
             unregisterPowerSaveNetworkCallback()
             showStatus(getString(R.string.status_auto_switch_disabled))
-        }
-
-        advancedBinding.exportLogsButton.setOnClickListener {
-            val file = logStore.exportAll()
-            val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
-            shareUri(uri)
         }
 
         homeBinding.refreshStatusButton.setOnClickListener { updateLiveStatus() }
@@ -199,7 +178,16 @@ class MainActivity : AppCompatActivity() {
                 else -> false
             }
         }
-        binding.bottomNav.selectedItemId = R.id.nav_home
+    }
+
+    private fun applyInitialPageSelection() {
+        val target = intent.getStringExtra(EXTRA_OPEN_PAGE)
+        val itemId = when (target) {
+            PAGE_RULES -> R.id.nav_rules
+            PAGE_ADVANCED -> R.id.nav_advanced
+            else -> R.id.nav_home
+        }
+        binding.bottomNav.selectedItemId = itemId
     }
 
     private fun showPage(page: Page) {
@@ -223,7 +211,6 @@ class MainActivity : AppCompatActivity() {
             Page.ADVANCED -> {
                 binding.headerTitle.text = getString(R.string.page_advanced_title)
                 binding.headerSubtitle.text = getString(R.string.page_advanced_subtitle)
-                refreshSelfCheck()
             }
         }
     }
@@ -244,38 +231,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun shareUri(uri: Uri) {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        runCatching { startActivity(Intent.createChooser(intent, getString(R.string.chooser_export_logs))) }
-            .onFailure {
-                val err = it.message ?: getString(R.string.label_unknown)
-                Toast.makeText(this, getString(R.string.status_export_failed, err), Toast.LENGTH_LONG).show()
-            }
-    }
-
-    private fun loadConfigToEditor() {
-        advancedBinding.configEditor.setText(configStore.loadRawJson())
-        val cfg = configStore.load()
-        syncNoWifiImmediateSwitch(cfg.noWifiImmediate)
-        syncNoWifiSlot(cfg.noWifiSlot)
-        syncDelayConfig(cfg)
-        syncPowerMode(cfg.powerSaveMode)
-    }
-
     private fun refreshRuleList() {
-        val config = parseConfigFromEditor().getOrElse {
-            rulesBinding.rulesContainer.removeAllViews()
-            val text = TextView(this).apply {
-                this.text = getString(R.string.status_rule_list_unavailable)
-                setTextColor(color(R.color.danger))
-            }
-            rulesBinding.rulesContainer.addView(text)
-            return
-        }
+        val config = configStore.load()
         renderRules(config.rules.sortedByDescending { it.priority })
     }
 
@@ -299,6 +256,7 @@ class MainActivity : AppCompatActivity() {
                     getString(R.string.status_live_wifi_connected, wifiLabel)
                 }
                 homeBinding.statusText.text = getString(R.string.status_live, slotLabel, wifiText)
+                updateLastSwitchSummary()
             } finally {
                 homeBinding.refreshStatusButton.isEnabled = true
                 updatingLiveStatus = false
@@ -313,8 +271,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val raw = advancedBinding.configEditor.text?.toString().orEmpty()
-        val config = runCatching { configStore.parse(raw) }.getOrElse { configStore.load() }
+        val config = configStore.load()
         val updated = appendOrUpdateRule(config.rules, snapshot, targetSlot)
         val next = config.copy(rules = updated.sortedByDescending { it.priority })
         persistConfig(next)
@@ -576,26 +533,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyConfigChange(statusMessage: String, transform: (AppConfig) -> AppConfig) {
-        val current = parseConfigFromEditor().getOrElse {
-            showStatus(getString(R.string.status_invalid_json_modify))
-            return
-        }
+        val current = configStore.load()
         val next = transform(current)
         persistConfig(next)
         refreshRuleList()
         showStatus(statusMessage)
     }
 
-    private fun parseConfigFromEditor(): Result<AppConfig> {
-        val raw = advancedBinding.configEditor.text?.toString().orEmpty()
-        return runCatching { configStore.parse(raw) }
-    }
-
     private fun persistConfig(config: AppConfig) {
         configStore.save(config)
-        advancedBinding.configEditor.setText(configStore.toJson(config))
-        syncNoWifiImmediateSwitch(config.noWifiImmediate)
-        syncNoWifiSlot(config.noWifiSlot)
         syncDelayConfig(config)
     }
 
@@ -610,54 +556,6 @@ class MainActivity : AppCompatActivity() {
         }
         selectedRuleIds.clear()
         refreshRuleList()
-    }
-
-    private fun bindNoWifiImmediateSwitch() {
-        advancedBinding.noWifiImmediateSwitch.setOnCheckedChangeListener { _, isChecked ->
-            if (updatingNoWifiSwitch) return@setOnCheckedChangeListener
-            val config = parseConfigFromEditor().getOrElse {
-                showStatus(getString(R.string.status_invalid_json_modify))
-                syncNoWifiImmediateSwitch(configStore.load().noWifiImmediate)
-                return@setOnCheckedChangeListener
-            }
-            persistConfig(config.copy(noWifiImmediate = isChecked))
-        }
-    }
-
-    private fun syncNoWifiImmediateSwitch(enabled: Boolean) {
-        updatingNoWifiSwitch = true
-        advancedBinding.noWifiImmediateSwitch.isChecked = enabled
-        updatingNoWifiSwitch = false
-    }
-
-    private fun bindNoWifiSlotGroup() {
-        advancedBinding.noWifiSlotGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked || updatingNoWifiSlot) return@addOnButtonCheckedListener
-            val target = when (checkedId) {
-                R.id.noWifiSlotSim1 -> 0
-                R.id.noWifiSlotSim2 -> 1
-                else -> null
-            }
-            val config = parseConfigFromEditor().getOrElse {
-                showStatus(getString(R.string.status_invalid_json_modify))
-                syncNoWifiSlot(configStore.load().noWifiSlot)
-                return@addOnButtonCheckedListener
-            }
-            updateNoWifiSlotButtons(checkedId)
-            persistConfig(config.copy(noWifiSlot = target))
-        }
-    }
-
-    private fun syncNoWifiSlot(slot: Int?) {
-        updatingNoWifiSlot = true
-        val targetId = when (slot) {
-            0 -> R.id.noWifiSlotSim1
-            1 -> R.id.noWifiSlotSim2
-            else -> R.id.noWifiSlotOff
-        }
-        advancedBinding.noWifiSlotGroup.check(targetId)
-        updateNoWifiSlotButtons(targetId)
-        updatingNoWifiSlot = false
     }
 
     private fun bindDelayConfig() {
@@ -679,7 +577,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val config = parseConfigFromEditor().getOrElse { configStore.load() }
+        val config = configStore.load()
         val next = config.copy(
             cooldownSec = cooldown,
             leaveDelaySec = leaveDelay,
@@ -689,250 +587,8 @@ class MainActivity : AppCompatActivity() {
         showStatus(getString(R.string.status_delay_config_saved))
     }
 
-    private fun updateNoWifiSlotButtons(selectedId: Int) {
-        val activeBg = ColorStateList.valueOf(color(R.color.primary))
-        val activeText = color(R.color.on_primary)
-        val inactiveBg = ColorStateList.valueOf(color(R.color.card_stroke))
-        val inactiveText = color(R.color.on_background)
-        val inactiveStroke = ColorStateList.valueOf(color(R.color.card_stroke))
-
-        val buttons = listOf(
-            advancedBinding.noWifiSlotOff,
-            advancedBinding.noWifiSlotSim1,
-            advancedBinding.noWifiSlotSim2
-        )
-        for (btn in buttons) {
-            val active = btn.id == selectedId
-            btn.backgroundTintList = if (active) activeBg else inactiveBg
-            btn.setTextColor(if (active) activeText else inactiveText)
-            btn.strokeColor = inactiveStroke
-        }
-    }
-
-    private fun bindPowerModeGroup() {
-        advancedBinding.powerModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked || updatingPowerMode) return@addOnButtonCheckedListener
-            val powerSave = checkedId == R.id.powerModeSave
-            if (powerSave) {
-                showModeDialog(
-                    title = getString(R.string.dialog_title_powersave),
-                    message = getString(R.string.dialog_msg_powersave)
-                )
-            } else {
-                showModeDialog(
-                    title = getString(R.string.dialog_title_persistent),
-                    message = getString(R.string.dialog_msg_persistent)
-                )
-            }
-
-            val current = parseConfigFromEditor().getOrElse { configStore.load() }
-            persistConfig(current.copy(powerSaveMode = powerSave))
-            showStatus(getString(if (powerSave) R.string.status_mode_powersave else R.string.status_mode_persistent))
-            updatePowerModeButtons(checkedId)
-            startModeWorker("mode_switch")
-        }
-    }
-
-    private fun syncPowerMode(powerSave: Boolean) {
-        updatingPowerMode = true
-        val targetId = if (powerSave) R.id.powerModeSave else R.id.powerModePersistent
-        advancedBinding.powerModeGroup.check(targetId)
-        updatePowerModeButtons(targetId)
-        updatingPowerMode = false
-    }
-
-    private fun bindSelfCheck() {
-        advancedBinding.selfCheckRefreshButton.setOnClickListener { refreshSelfCheck() }
-        refreshSelfCheck()
-    }
-
-    private fun refreshSelfCheck() {
-        if (updatingSelfCheck) return
-        updatingSelfCheck = true
-        advancedBinding.selfCheckRefreshButton.isEnabled = false
-        lifecycleScope.launch {
-            try {
-                val data = withContext(Dispatchers.IO) { collectSelfCheckData() }
-                val permissionText = if (data.missingPermissions.isEmpty()) {
-                    getString(R.string.label_permissions_ok)
-                } else {
-                    val labels = data.missingPermissions.joinToString(", ")
-                    getString(R.string.label_permissions_missing, labels)
-                }
-
-                val wifiParts = buildList {
-                    data.wifiSsid?.let { add("SSID=$it") }
-                    data.wifiBssid?.let { add("BSSID=$it") }
-                }
-                val wifiText = if (wifiParts.isEmpty()) {
-                    getString(R.string.label_no_wifi)
-                } else {
-                    wifiParts.joinToString(" | ")
-                }
-
-                val slotText = when (data.slot) {
-                    0 -> "SIM1"
-                    1 -> "SIM2"
-                    else -> getString(R.string.label_unknown)
-                }
-                val enabledText = getString(
-                    if (data.enabled) R.string.label_enabled else R.string.label_disabled
-                )
-                val powerText = getString(
-                    if (data.powerSaveMode) R.string.label_powersave else R.string.label_persistent
-                )
-                val rootText = getString(
-                    if (data.rootAvailable) R.string.label_root_available else R.string.label_root_unavailable
-                )
-                val lastSwitchText = if (data.lastSwitchAtMs <= 0L) {
-                    getString(R.string.label_last_switch_none)
-                } else {
-                    val fmt = SimpleDateFormat("MM-dd HH:mm:ss", Locale.getDefault())
-                    fmt.format(Date(data.lastSwitchAtMs))
-                }
-
-                advancedBinding.selfCheckPermissions.text =
-                    getString(R.string.self_check_permissions, permissionText)
-                advancedBinding.selfCheckWifi.text =
-                    getString(R.string.self_check_wifi, wifiText)
-                advancedBinding.selfCheckSlot.text =
-                    getString(R.string.self_check_slot, slotText)
-                advancedBinding.selfCheckEnabled.text =
-                    getString(R.string.self_check_enabled, enabledText)
-                advancedBinding.selfCheckPowerMode.text =
-                    getString(R.string.self_check_power_mode, powerText)
-                advancedBinding.selfCheckRules.text =
-                    getString(R.string.self_check_rules, data.rulesCount)
-                advancedBinding.selfCheckRoot.text =
-                    getString(R.string.self_check_root, rootText)
-                advancedBinding.selfCheckLastSwitch.text =
-                    getString(R.string.self_check_last_switch, lastSwitchText)
-            } finally {
-                advancedBinding.selfCheckRefreshButton.isEnabled = true
-                updatingSelfCheck = false
-            }
-        }
-    }
-
-    private fun showModeDialog(title: String, message: String) {
-        AlertDialog.Builder(this)
-            .setTitle(title)
-            .setMessage(message)
-            .setPositiveButton(getString(R.string.dialog_btn_confirm), null)
-            .show()
-    }
-
-    private fun updatePowerModeButtons(selectedId: Int) {
-        val activeBg = ColorStateList.valueOf(color(R.color.primary))
-        val activeText = color(R.color.on_primary)
-        val inactiveBg = ColorStateList.valueOf(color(R.color.card_stroke))
-        val inactiveText = color(R.color.on_background)
-        val inactiveStroke = ColorStateList.valueOf(color(R.color.card_stroke))
-
-        val buttons = listOf(
-            advancedBinding.powerModeSave,
-            advancedBinding.powerModePersistent
-        )
-        for (btn in buttons) {
-            val active = btn.id == selectedId
-            btn.backgroundTintList = if (active) activeBg else inactiveBg
-            btn.setTextColor(if (active) activeText else inactiveText)
-            btn.strokeColor = inactiveStroke
-        }
-    }
-
     private fun Int.dp(): Int = (this * resources.displayMetrics.density).toInt()
     private fun color(resId: Int): Int = ContextCompat.getColor(this, resId)
-
-    private data class SelfCheckData(
-        val missingPermissions: List<String>,
-        val wifiSsid: String?,
-        val wifiBssid: String?,
-        val slot: Int?,
-        val enabled: Boolean,
-        val powerSaveMode: Boolean,
-        val rulesCount: Int,
-        val rootAvailable: Boolean,
-        val lastSwitchAtMs: Long
-    )
-
-    private fun collectSelfCheckData(): SelfCheckData {
-        val missing = requiredPermissions().filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }.map { permissionLabel(it) }
-        val snapshot = wifiSnapshotProvider.current()
-        val config = configStore.load()
-        val state = SwitchStateStore(this).getLastSwitchAtMs()
-        return SelfCheckData(
-            missingPermissions = missing,
-            wifiSsid = snapshot?.ssid,
-            wifiBssid = snapshot?.bssid,
-            slot = slotResolver.currentDataSlot(),
-            enabled = config.enabled,
-            powerSaveMode = config.powerSaveMode,
-            rulesCount = config.rules.size,
-            rootAvailable = isRootAvailable(),
-            lastSwitchAtMs = state
-        )
-    }
-
-    private fun requiredPermissions(): List<String> {
-        val permissions = mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.READ_PHONE_STATE
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions += Manifest.permission.NEARBY_WIFI_DEVICES
-            permissions += Manifest.permission.POST_NOTIFICATIONS
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        ) {
-            permissions += Manifest.permission.ACCESS_BACKGROUND_LOCATION
-        }
-        return permissions
-    }
-
-    private fun permissionLabel(permission: String): String {
-        return when (permission) {
-            Manifest.permission.ACCESS_FINE_LOCATION -> getString(R.string.perm_fine_location)
-            Manifest.permission.ACCESS_COARSE_LOCATION -> getString(R.string.perm_coarse_location)
-            Manifest.permission.ACCESS_BACKGROUND_LOCATION -> getString(R.string.perm_background_location)
-            Manifest.permission.NEARBY_WIFI_DEVICES -> getString(R.string.perm_nearby_wifi)
-            Manifest.permission.READ_PHONE_STATE -> getString(R.string.perm_read_phone_state)
-            Manifest.permission.POST_NOTIFICATIONS -> getString(R.string.perm_post_notifications)
-            else -> permission.substringAfterLast('.')
-        }
-    }
-
-    private fun isRootAvailable(): Boolean {
-        val suBins = listOf(
-            "su",
-            "/system/bin/su",
-            "/system/xbin/su",
-            "/sbin/su",
-            "/data/adb/ksu/bin/su",
-            "/data/adb/ap/bin/su",
-            "/debug_ramdisk/su"
-        )
-        for (suBin in suBins) {
-            val ok = runCatching {
-                val process = ProcessBuilder(suBin, "-c", "id")
-                    .redirectErrorStream(true)
-                    .start()
-                val finished = process.waitFor(2, TimeUnit.SECONDS)
-                if (!finished) {
-                    process.destroyForcibly()
-                    false
-                } else {
-                    process.exitValue() == 0
-                }
-            }.getOrDefault(false)
-            if (ok) return true
-        }
-        return false
-    }
 
     private fun requestRuntimePermissions() {
         val permissions = mutableListOf(
@@ -972,9 +628,10 @@ class MainActivity : AppCompatActivity() {
     private fun startAutoSwitchOnLaunch() {
         val current = configStore.load()
         if (!current.enabled) {
-            persistConfig(current.copy(enabled = true))
+            showStatus(getString(R.string.status_auto_switch_disabled))
+            return
         }
-        showStatus(getString(R.string.status_auto_switch_enabled))
+        showStatus(getString(R.string.status_auto_switch_enabled_with_mode, modeDetail(current.powerSaveMode)))
         startModeWorker("app_launch")
     }
 
@@ -1036,5 +693,47 @@ class MainActivity : AppCompatActivity() {
     private fun stopForegroundServiceIfNeeded() {
         val svc = Intent(this, AutoSwitchService::class.java)
         stopService(svc)
+    }
+
+    private fun modeDetail(powerSave: Boolean): String {
+        return if (powerSave) {
+            getString(R.string.label_mode_powersave_detail)
+        } else {
+            getString(R.string.label_mode_persistent_detail)
+        }
+    }
+
+    private fun showDisclaimerDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.dialog_title_disclaimer))
+            .setMessage(getString(R.string.dialog_msg_disclaimer))
+            .setPositiveButton(getString(R.string.dialog_btn_confirm), null)
+            .show()
+    }
+
+    private fun updateLastSwitchSummary() {
+        val event = SwitchStateStore(this).getLastSwitchEvent()
+        if (event == null) {
+            homeBinding.lastSwitchText.text = getString(R.string.status_last_switch_none)
+            return
+        }
+        val timeText = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(event.atMs))
+        val resultText = when {
+            event.success -> getString(R.string.label_switch_success)
+            event.message.contains("verify_failed", ignoreCase = true) ->
+                getString(R.string.label_switch_verify_failed)
+            else -> getString(R.string.label_switch_failed)
+        }
+        val simLabel = "SIM${event.targetSlot + 1}"
+        val reason = event.reason.ifBlank { getString(R.string.label_unknown) }
+        val transport = event.transport.ifBlank { getString(R.string.label_unknown) }
+        val summary = "$timeText $resultText $simLabel · $transport · $reason"
+        homeBinding.lastSwitchText.text = getString(R.string.status_last_switch, summary)
+    }
+
+    companion object {
+        const val EXTRA_OPEN_PAGE = "open_page"
+        const val PAGE_ADVANCED = "advanced"
+        const val PAGE_RULES = "rules"
     }
 }

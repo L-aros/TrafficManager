@@ -81,11 +81,7 @@ jobs:
             base="$(basename "$apk")"
             abi=""
 
-            if [[ "$base" =~ ^TrafficManager-.+-(.+)-release\.apk$ ]]; then
-              # Already uses desired naming: keep as-is.
-              cp "$apk" "dist/$base"
-              continue
-            elif [[ "$base" =~ ^app-(.+)-release\.apk$ ]]; then
+            if [[ "$base" =~ ^app-(.+)-release\.apk$ ]]; then
               abi="${BASH_REMATCH[1]}"
             elif [[ "$base" == "app-release.apk" ]]; then
               abi="universal"
@@ -93,7 +89,7 @@ jobs:
               abi="unknown"
             fi
 
-            out="TrafficManager-${version}.r${GITHUB_RUN_NUMBER}.${GITHUB_SHA:0:7}-${abi}-release.apk"
+            out="TrafficManager-v${version}-${abi}-release.apk"
             cp "$apk" "dist/$out"
           done
 

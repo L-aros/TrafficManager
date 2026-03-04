@@ -42,3 +42,27 @@ if ($gitShort) {
 }
 
 & "$repoRoot\gradlew.bat" :app:assembleRelease -PVERSION_NAME="$VersionName" -PVERSION_CODE="$buildNumber"
+
+$releaseDir = Join-Path $repoRoot "app\build\outputs\apk\release"
+if (Test-Path $releaseDir) {
+    Get-ChildItem -Path $releaseDir -Filter *.apk | ForEach-Object {
+        $name = $_.Name
+        $abi = $null
+        if ($name -match "^app-(.+)-release\.apk$") {
+            $abi = $Matches[1]
+        } elseif ($name -eq "app-release.apk") {
+            $abi = "universal"
+        }
+
+        if ([string]::IsNullOrWhiteSpace($abi)) {
+            return
+        }
+
+        $targetName = "TrafficManager-v$VersionName-$abi-release.apk"
+        $targetPath = Join-Path $releaseDir $targetName
+        if (Test-Path $targetPath) {
+            Remove-Item -Force $targetPath
+        }
+        Move-Item -Force $_.FullName $targetPath
+    }
+}

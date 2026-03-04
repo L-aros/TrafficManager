@@ -1,18 +1,25 @@
 package com.laros.lsp.traffics.core
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.location.LocationManager
+import androidx.core.content.ContextCompat
+import com.laros.lsp.traffics.log.LogStore
 import java.util.concurrent.TimeUnit
 
 class WifiSnapshotProvider(private val context: Context) {
     private val conn by lazy { context.getSystemService(ConnectivityManager::class.java) }
     private val wifi by lazy { context.applicationContext.getSystemService(WifiManager::class.java) }
+    private val logStore by lazy { LogStore(context) }
     private var lastRootProbeAtMs: Long = 0L
     private var lastRootSnapshot: WifiSnapshot? = null
+    private var lastDiagAtMs: Long = 0L
 
     fun current(): WifiSnapshot? {
         val fromCaps = readFromNetworkCapabilities()
@@ -31,7 +38,11 @@ class WifiSnapshotProvider(private val context: Context) {
             lastRootProbeAtMs = now
             lastRootSnapshot = readViaRoot()
         }
-        return lastRootSnapshot
+        val root = lastRootSnapshot
+        if (root == null || (root.ssid == null && root.bssid == null)) {
+            logFailureIfNeeded(fromCaps, fromManager, fromScan)
+        }
+        return root
     }
 
     private fun normalize(raw: String?): String? {
@@ -126,6 +137,53 @@ class WifiSnapshotProvider(private val context: Context) {
 
         if (ssid == null && bssid == null) return null
         return WifiSnapshot(ssid = ssid, bssid = bssid)
+    }
+
+    private fun logFailureIfNeeded(
+        fromCaps: Pair<String?, String?>?,
+        fromManager: Pair<String?, String?>?,
+        fromScan: Pair<String?, String?>?
+    ) {
+        val now = System.currentTimeMillis()
+        if (now - lastDiagAtMs < 30_000L) return
+        lastDiagAtMs = now
+
+        val scanCount = runCatching { wifi?.scanResults?.size ?: 0 }.getOrDefault(0)
+        val fine = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+        val coarse = hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+        val nearby = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            hasPermission(Manifest.permission.NEARBY_WIFI_DEVICES)
+        } else {
+            true
+        }
+        val locationEnabled = isLocationEnabled()
+
+        logStore.append(
+            "wifi_snapshot: empty caps=${pairToLabel(fromCaps)} " +
+                "manager=${pairToLabel(fromManager)} scan=${pairToLabel(fromScan)} " +
+                "scanCount=$scanCount permFine=$fine permCoarse=$coarse " +
+                "permNearbyWifi=$nearby locationEnabled=$locationEnabled"
+        )
+    }
+
+    private fun pairToLabel(pair: Pair<String?, String?>?): String {
+        if (pair == null) return "null"
+        val ssid = pair.first ?: "null"
+        val bssid = pair.second ?: "null"
+        return "ssid=$ssid,bssid=$bssid"
+    }
+
+    private fun hasPermission(permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun isLocationEnabled(): Boolean {
+        val lm = context.getSystemService(LocationManager::class.java) ?: return false
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            lm.isLocationEnabled
+        } else {
+            true
+        }
     }
 
     private fun runAsRoot(command: String): String {

@@ -3,19 +3,18 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-import com.android.build.api.variant.FilterConfiguration
 import java.io.ByteArrayOutputStream
 import java.util.Properties
 
 fun Project.execAndGet(vararg args: String): String? {
     val stdout = ByteArrayOutputStream()
     val result = runCatching {
-        exec {
+        providers.exec {
             commandLine = args.toList()
             standardOutput = stdout
             errorOutput = ByteArrayOutputStream()
             isIgnoreExitValue = true
-        }.exitValue
+        }.result.get().exitValue
     }.getOrNull()
     if (result != 0) return null
     return stdout.toString().trim().ifBlank { null }
@@ -99,19 +98,6 @@ android {
 
     buildFeatures {
         viewBinding = true
-    }
-}
-
-androidComponents {
-    onVariants(selector().withBuildType("release")) { variant ->
-        val versionName = variant.versionName
-        variant.outputs.forEach { output ->
-            val abi = output.filters.find { it.filterType == FilterConfiguration.FilterType.ABI }
-                ?.identifier ?: "universal"
-            output.outputFileName.set(
-                "TrafficManager-${versionName.get()}-${abi}-${variant.buildType}.apk"
-            )
-        }
     }
 }
 

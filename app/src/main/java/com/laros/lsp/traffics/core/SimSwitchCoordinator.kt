@@ -16,11 +16,25 @@ class SimSwitchCoordinator(
 ) {
     private var activeRuleId: String? = null
     private var lastMatchedAtMs: Long = 0L
-    private var lastSwitchAtMs: Long = stateStore?.getLastSwitchAtMs() ?: 0L
+    private var lastSwitchAtMs: Long = 0L
     private var previousSlotBeforeRule: Int? = null
     private var consecutiveNoMatchTicks: Int = 0
     private var consecutiveNoWifiTicks: Int = 0
     private var lastNoWifiAtMs: Long = 0L
+    private var stateDirty: Boolean = false
+
+    init {
+        if (stateStore != null) {
+            val session = stateStore.getSessionState()
+            activeRuleId = session.activeRuleId
+            lastMatchedAtMs = session.lastMatchedAtMs
+            lastSwitchAtMs = session.lastSwitchAtMs
+            previousSlotBeforeRule = session.previousSlotBeforeRule
+            consecutiveNoMatchTicks = session.consecutiveNoMatchTicks
+            consecutiveNoWifiTicks = session.consecutiveNoWifiTicks
+            lastNoWifiAtMs = session.lastNoWifiAtMs
+        }
+    }
 
     fun onTick(
         config: AppConfig,
@@ -32,26 +46,37 @@ class SimSwitchCoordinator(
         if (matchedRule != null) {
             resetNoWifiState()
             consecutiveNoMatchTicks = 0
+            markDirty()
             lastMatchedAtMs = nowMs
+            markDirty()
             handleRuleMatch(config, matchedRule, nowMs)
+            flushState()
             return
         }
         if (noWifi) {
             consecutiveNoMatchTicks = 0
+            markDirty()
             handleNoWifi(config, nowMs)
+            flushState()
             return
         }
         resetNoWifiState()
         consecutiveNoMatchTicks += 1
+        markDirty()
         handleNoRuleMatch(config, nowMs)
+        flushState()
     }
 
     private fun handleRuleMatch(config: AppConfig, rule: SwitchRule, nowMs: Long) {
         val currentSlot = resolver.currentDataSlot()
         if (activeRuleId != rule.id && previousSlotBeforeRule == null) {
             previousSlotBeforeRule = currentSlot
+            markDirty()
         }
-        activeRuleId = rule.id
+        if (activeRuleId != rule.id) {
+            activeRuleId = rule.id
+            markDirty()
+        }
 
         if (currentSlot == rule.targetSlot) {
             return
@@ -85,14 +110,17 @@ class SimSwitchCoordinator(
         previousSlotBeforeRule = null
         lastMatchedAtMs = 0L
         consecutiveNoMatchTicks = 0
+        markDirty()
     }
 
     private fun handleNoWifi(config: AppConfig, nowMs: Long) {
         val target = config.noWifiSlot ?: return
         if (lastNoWifiAtMs == 0L) {
             lastNoWifiAtMs = nowMs
+            markDirty()
         }
         consecutiveNoWifiTicks += 1
+        markDirty()
         if (!config.noWifiImmediate) {
             val enoughMiss = consecutiveNoWifiTicks >= config.leaveMissThreshold
             val shouldSwitch = nowMs - lastNoWifiAtMs >= config.leaveDelaySec * 1000L
@@ -114,13 +142,23 @@ class SimSwitchCoordinator(
         )
         if (result.success) {
             lastSwitchAtMs = System.currentTimeMillis()
-            stateStore?.setLastSwitchAtMs(lastSwitchAtMs)
+            markDirty()
             logStore.append("switch success slot=$targetSlot transport=${result.transport} reason=$reason msg=${result.message}")
         } else {
             logStore.append("switch failed slot=$targetSlot transport=${result.transport} reason=$reason msg=${result.message}")
         }
         onSwitchEvent?.invoke(
             SwitchEvent(
+                success = result.success,
+                targetSlot = targetSlot,
+                reason = reason,
+                transport = result.transport,
+                message = result.message
+            )
+        )
+        stateStore?.setLastSwitchEvent(
+            SwitchStateStore.LastSwitchEvent(
+                atMs = System.currentTimeMillis(),
                 success = result.success,
                 targetSlot = targetSlot,
                 reason = reason,
@@ -135,14 +173,52 @@ class SimSwitchCoordinator(
     }
 
     private fun resetNoWifiState() {
-        consecutiveNoWifiTicks = 0
-        lastNoWifiAtMs = 0L
+        if (consecutiveNoWifiTicks != 0) {
+            consecutiveNoWifiTicks = 0
+            markDirty()
+        }
+        if (lastNoWifiAtMs != 0L) {
+            lastNoWifiAtMs = 0L
+            markDirty()
+        }
     }
 
     private fun resetRuleSession() {
-        activeRuleId = null
-        previousSlotBeforeRule = null
-        lastMatchedAtMs = 0L
-        consecutiveNoMatchTicks = 0
+        if (activeRuleId != null) {
+            activeRuleId = null
+            markDirty()
+        }
+        if (previousSlotBeforeRule != null) {
+            previousSlotBeforeRule = null
+            markDirty()
+        }
+        if (lastMatchedAtMs != 0L) {
+            lastMatchedAtMs = 0L
+            markDirty()
+        }
+        if (consecutiveNoMatchTicks != 0) {
+            consecutiveNoMatchTicks = 0
+            markDirty()
+        }
+    }
+
+    private fun markDirty() {
+        stateDirty = true
+    }
+
+    private fun flushState() {
+        if (!stateDirty) return
+        stateStore?.setSessionState(
+            SwitchStateStore.SessionState(
+                activeRuleId = activeRuleId,
+                lastMatchedAtMs = lastMatchedAtMs,
+                lastSwitchAtMs = lastSwitchAtMs,
+                previousSlotBeforeRule = previousSlotBeforeRule,
+                consecutiveNoMatchTicks = consecutiveNoMatchTicks,
+                consecutiveNoWifiTicks = consecutiveNoWifiTicks,
+                lastNoWifiAtMs = lastNoWifiAtMs
+            )
+        )
+        stateDirty = false
     }
 }
