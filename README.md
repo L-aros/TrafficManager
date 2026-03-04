@@ -142,7 +142,7 @@ git push origin v1.0.0
 - `noWifiSlot` / `noWifiImmediate`: 无 Wi-Fi 时的目标卡与是否立即切换。
 - `logRetentionDays` / `logMaxMb`: 日志保留天数与单日志大小上限。
 - `rootCommandTemplates`: root 兜底时使用的系统命令模板（可保留多条）。
-- `rules`: Wi-Fi 规则列表，`priority` 越大优先级越高，`targetSlot` 0/1/2 表示关闭/SIM1/SIM2。
+- `rules`: Wi-Fi 规则列表，`priority` 越大优先级越高，`targetSlot` 0/1 表示 SIM1/SIM2。
 
 ## 常见排查
 

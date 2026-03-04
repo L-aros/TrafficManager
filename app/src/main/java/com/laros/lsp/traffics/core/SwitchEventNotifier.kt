@@ -21,10 +21,13 @@ class SwitchEventNotifier(private val context: Context) {
         ensureChannels(manager)
 
         val simLabel = "SIM${event.targetSlot + 1}"
-        val title = if (event.success) {
-            context.getString(R.string.notify_switch_success_title, simLabel)
-        } else {
-            context.getString(R.string.notify_switch_failed_title, simLabel)
+        val title = when {
+            event.success ->
+                context.getString(R.string.notify_switch_success_title, simLabel)
+            event.message.contains("verify_failed", ignoreCase = true) ->
+                context.getString(R.string.notify_switch_verify_failed_title, simLabel)
+            else ->
+                context.getString(R.string.notify_switch_failed_title, simLabel)
         }
         val text = context.getString(R.string.notify_event_text, event.reason, event.transport)
         val style = NotificationCompat.BigTextStyle()

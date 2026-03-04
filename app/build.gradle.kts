@@ -3,7 +3,22 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+import java.io.ByteArrayOutputStream
 import java.util.Properties
+
+fun Project.execAndGet(vararg args: String): String? {
+    val stdout = ByteArrayOutputStream()
+    val result = runCatching {
+        providers.exec {
+            commandLine = args.toList()
+            standardOutput = stdout
+            errorOutput = ByteArrayOutputStream()
+            isIgnoreExitValue = true
+        }.result.get().exitValue
+    }.getOrNull()
+    if (result != 0) return null
+    return stdout.toString().trim().ifBlank { null }
+}
 
 android {
     namespace = "com.laros.lsp.traffics"
@@ -31,8 +46,23 @@ android {
         applicationId = "com.laros.lsp.traffics"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        val baseVersion = (project.findProperty("VERSION_NAME") as String?)?.trim()
+            ?.takeIf { it.isNotBlank() } ?: "0.1.0"
+        val propVersionCode = (project.findProperty("VERSION_CODE") as String?)
+            ?.trim()
+            ?.toIntOrNull()
+        val envBuildNumber = System.getenv("GITHUB_RUN_NUMBER")
+            ?: System.getenv("BUILD_NUMBER")
+            ?: System.getenv("CI_PIPELINE_IID")
+        val gitBuildNumber = project.execAndGet("git", "rev-list", "--count", "HEAD")
+        val buildNumber = propVersionCode
+            ?: envBuildNumber?.toIntOrNull()
+            ?: gitBuildNumber?.toIntOrNull()
+            ?: 1
+        val gitHash = project.execAndGet("git", "rev-parse", "--short=7", "HEAD") ?: "nogit"
+
+        versionCode = buildNumber
+        versionName = "${baseVersion}.r${buildNumber}.${gitHash}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

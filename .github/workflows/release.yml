@@ -67,11 +67,13 @@ jobs:
           sed -i '/^org\.gradle\.java\.home=/d' gradle.properties
 
       - name: Build release
-        run: ./gradlew :app:assembleRelease
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          ./gradlew :app:assembleRelease -PVERSION_NAME="${version}" -PVERSION_CODE="${GITHUB_RUN_NUMBER}"
 
       - name: Standardize APK names
         run: |
-          version="${GITHUB_REF_NAME}"
+          version="${GITHUB_REF_NAME#v}"
           mkdir -p dist
 
           shopt -s nullglob
@@ -87,7 +89,7 @@ jobs:
               abi="unknown"
             fi
 
-            out="TrafficManager-${version}-${abi}-release.apk"
+            out="TrafficManager-v${version}-${abi}-release.apk"
             cp "$apk" "dist/$out"
           done
 

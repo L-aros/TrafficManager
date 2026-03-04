@@ -2,6 +2,7 @@
     <string name="app_name">TrafficManager</string>
     <string name="title_main">TrafficManager</string>
     <string name="subtitle_main">按 Wi-Fi 规则自动切换数据卡</string>
+    <string name="xposed_description">TrafficManager：按 Wi-Fi SSID/BSSID 规则自动切换数据卡</string>
 
     <string name="btn_save">保存配置</string>
     <string name="btn_start">启动自动切卡</string>
@@ -40,12 +41,15 @@
     <string name="status_service_started">状态：服务已启动</string>
     <string name="status_service_stopped">状态：服务已停止</string>
     <string name="status_auto_switch_enabled">状态：自动切卡已开启</string>
+    <string name="status_auto_switch_enabled_with_mode">状态：自动切卡已开启（%1$s）</string>
     <string name="status_auto_switch_disabled">状态：自动切卡已关闭</string>
     <string name="status_export_failed">导出失败：%1$s</string>
     <string name="status_rule_list_unavailable">规则列表不可用：JSON 无效</string>
     <string name="status_live">实时：数据卡=%1$s | %2$s</string>
     <string name="status_live_wifi_connected">已连接WiFi=%1$s</string>
     <string name="status_live_wifi_disconnected">未连接WiFi</string>
+    <string name="status_last_switch">最近切卡：%1$s</string>
+    <string name="status_last_switch_none">最近切卡：无</string>
     <string name="status_wifi_not_detected">状态：未检测到当前 Wi-Fi</string>
     <string name="status_learned_rule">状态：已学习 %1$s -> SIM%2$d</string>
     <string name="status_input_ssid_or_bssid">状态：请先输入 WiFi名称 或 MAC地址</string>
@@ -64,6 +68,11 @@
     <string name="label_unknown">未知</string>
     <string name="label_null">无</string>
     <string name="label_no_rules">暂无规则</string>
+    <string name="label_mode_powersave_detail">省电模式：广播/WorkManager</string>
+    <string name="label_mode_persistent_detail">常驻模式：前台服务</string>
+    <string name="label_switch_success">成功</string>
+    <string name="label_switch_failed">失败</string>
+    <string name="label_switch_verify_failed">未生效</string>
     <string name="label_rule_title">[P%1$d] %2$s -> SIM%3$d</string>
     <string name="label_rule_detail">WiFi名称=%1$s | MAC地址=%2$s</string>
 
@@ -73,15 +82,40 @@
     <string name="notify_channel_events">TrafficManager 事件</string>
     <string name="notify_switch_success_title">数据卡已切换到 %1$s</string>
     <string name="notify_switch_failed_title">数据卡切换失败（%1$s）</string>
+    <string name="notify_switch_verify_failed_title">数据卡切换未生效（%1$s）</string>
     <string name="notify_event_text">%1$s · 方式：%2$s</string>
 
     <string name="nav_home">控制台</string>
     <string name="nav_rules">规则</string>
-    <string name="nav_advanced">高级</string>
+    <string name="nav_advanced">设置</string>
     <string name="page_home_title">控制台</string>
     <string name="page_home_subtitle">实时状态与快速操作</string>
     <string name="page_rules_title">规则</string>
     <string name="page_rules_subtitle">按 WiFi名称/MAC地址 管理切换策略</string>
-    <string name="page_advanced_title">高级</string>
-    <string name="page_advanced_subtitle">JSON 配置与日志导出</string>
+    <string name="page_advanced_title">设置</string>
+    <string name="page_advanced_subtitle">设置、诊断与更多选项</string>
+    <string name="page_settings_title">设置</string>
+
+    <string name="settings_section_diagnosis">诊断</string>
+    <string name="settings_section_advanced">高级</string>
+    <string name="settings_section_more">更多</string>
+
+    <string name="settings_item_self_check">自检</string>
+    <string name="settings_item_self_check_desc">权限、定位、Wi-Fi 与运行模式</string>
+    <string name="settings_item_advanced">高级配置</string>
+    <string name="settings_item_advanced_desc">无 Wi-Fi、JSON、日志导出</string>
+    <string name="settings_item_about">关于</string>
+    <string name="settings_item_about_desc">版本、作者与项目链接</string>
+    <string name="settings_item_disclaimer">免责声明</string>
+    <string name="settings_item_disclaimer_desc">使用风险提示与责任说明</string>
+    <string name="settings_coming_soon">即将提供</string>
+
+    <string name="about_version_format">版本 %1$s</string>
+    <string name="about_version_placeholder">版本</string>
+    <string name="about_summary">按 Wi‑Fi 规则自动切换数据卡，提供便捷的规则管理与运行状态查看。</string>
+    <string name="about_github">GitHub 项目</string>
+    <string name="github_url">https://github.com/L-aros/TrafficManager</string>
+
+    <string name="dialog_title_disclaimer">免责声明</string>
+    <string name="dialog_msg_disclaimer">本软件仅供学习交流与技术研究使用，请勿用于任何非法用途。使用本软件产生的一切后果由使用者自行承担，开发者不承担任何责任。</string>
 </resources>
