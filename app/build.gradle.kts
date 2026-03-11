@@ -59,10 +59,8 @@ android {
             ?: envBuildNumber?.toIntOrNull()
             ?: gitBuildNumber?.toIntOrNull()
             ?: 1
-        val gitHash = project.execAndGet("git", "rev-parse", "--short=7", "HEAD") ?: "nogit"
-
         versionCode = buildNumber
-        versionName = "${baseVersion}.r${buildNumber}.${gitHash}"
+        versionName = baseVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
