@@ -58,7 +58,7 @@ if (Test-Path $releaseDir) {
             return
         }
 
-        $targetName = "TrafficManager-v$VersionName-$abi-release.apk"
+        $targetName = "TrafficSIM-v$VersionName-$abi-release.apk"
         $targetPath = Join-Path $releaseDir $targetName
         if (Test-Path $targetPath) {
             Remove-Item -Force $targetPath
