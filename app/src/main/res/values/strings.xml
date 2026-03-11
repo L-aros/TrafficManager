@@ -124,6 +124,8 @@
     <string name="settings_item_about_desc">版本、作者与项目链接</string>
     <string name="settings_item_disclaimer">免责声明</string>
     <string name="settings_item_disclaimer_desc">使用风险提示与责任说明</string>
+    <string name="settings_item_permission_guide">权限说明</string>
+    <string name="settings_item_permission_guide_desc">说明每个权限的用途与影响</string>
     <string name="settings_coming_soon">即将提供</string>
 
     <string name="about_version_format">版本 %1$s</string>
@@ -134,4 +136,7 @@
 
     <string name="dialog_title_disclaimer">免责声明</string>
     <string name="dialog_msg_disclaimer">本软件仅供学习交流与技术研究使用，请勿用于任何非法用途。使用本软件产生的一切后果由使用者自行承担，开发者不承担任何责任。</string>
+    <string name="page_permission_guide_title">权限说明</string>
+    <string name="permission_guide_summary">TrafficSIM 会根据 Wi-Fi 规则自动切换默认数据卡。为了实现“识别当前 Wi‑Fi、判断当前数据卡、后台持续运行并通知切卡结果”这条完整链路，应用会申请下列系统权限。</string>
+    <string name="permission_guide_body">1. INTERNAL_BRIDGE（应用内部签名权限）\n用于应用与 LSPosed/Xposed 桥接链路之间的内部保护，限制只有同签名组件才能调用内部桥接能力，不会向用户弹出授权。\n\n2. 精确位置 / 大致位置\nAndroid 在多数版本上读取 Wi‑Fi 名称（SSID）和路由器标识（BSSID）时需要位置类权限。本应用依赖这些信息进行 Wi‑Fi 规则匹配，不用于地图、导航或轨迹记录。\n\n3. 后台位置\n用于应用不在前台时继续识别 Wi‑Fi 变化，保证后台自动切卡仍能工作。如果不授予，前台功能通常仍可用，但后台自动切卡可能失效。\n\n4. 附近 Wi‑Fi 设备\nAndroid 13 及以上系统读取 Wi‑Fi 环境信息时需要该权限。它与 Wi‑Fi 规则识别直接相关，不用于读取蓝牙、通讯录或其他无关数据。\n\n5. 读取 Wi‑Fi 状态\n用于读取当前 Wi‑Fi 连接状态、SSID、BSSID 与扫描结果，是 Wi‑Fi 规则引擎的基础权限之一。\n\n6. 读取网络状态\n用于判断当前网络连接情况，并在 Wi‑Fi 连接、切换或断开时及时触发规则评估。\n\n7. 读取电话状态\n用于读取双卡订阅信息、当前默认数据卡和卡槽映射关系，以便判断当前是 SIM1 还是 SIM2 在提供移动数据。不会读取短信、通讯录或通话录音。\n\n8. 开机完成\n用于手机重启后自动恢复服务与规则运行，避免每次开机都手动重新开启自动切卡。\n\n9. 前台服务 / 前台服务（数据同步）\n用于让后台自动切卡服务稳定运行，降低被系统回收的概率。对应会显示常驻通知，这是 Android 对长期运行服务的标准要求。\n\n10. 通知\n用于显示服务运行状态、切卡结果、焦点通知与调试通知。如果不授予，应用将无法正常展示切卡结果和焦点通知。\n\n不会申请的高敏感权限包括：通讯录、短信、通话记录、麦克风、相机、完整相册访问等。\n\n如果只授予部分权限，可能出现以下影响：\n- 不给位置或 Wi‑Fi 相关权限：无法稳定识别 Wi‑Fi 规则\n- 不给电话状态权限：无法可靠判断当前数据卡\n- 不给后台位置：后台自动切卡可能失效\n- 不给通知：无法正常显示切卡结果与焦点通知</string>
 </resources>

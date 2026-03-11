@@ -128,6 +128,9 @@ class MainActivity : AppCompatActivity() {
         advancedBinding.settingsListDisclaimer.setOnClickListener {
             showDisclaimerDialog()
         }
+        advancedBinding.settingsListPermissionGuide.setOnClickListener {
+            startActivity(Intent(this, PermissionGuideActivity::class.java))
+        }
 
         homeBinding.startButton.setOnClickListener {
             val current = configStore.load()

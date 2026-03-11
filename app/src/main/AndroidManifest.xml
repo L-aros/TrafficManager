@@ -60,6 +60,9 @@
             android:name=".AboutActivity"
             android:exported="false" />
         <activity
+            android:name=".PermissionGuideActivity"
+            android:exported="false" />
+        <activity
             android:name=".AdvancedConfigActivity"
             android:exported="false" />
         <activity

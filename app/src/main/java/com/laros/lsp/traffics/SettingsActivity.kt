@@ -28,6 +28,9 @@ class SettingsActivity : AppCompatActivity() {
         binding.itemAdvanced.setOnClickListener { openAdvanced() }
         binding.itemAbout.setOnClickListener { startActivity(Intent(this, AboutActivity::class.java)) }
         binding.itemDisclaimer.setOnClickListener { showDisclaimerDialog() }
+        binding.itemPermissionGuide.setOnClickListener {
+            startActivity(Intent(this, PermissionGuideActivity::class.java))
+        }
     }
 
     private fun openAdvanced() {
