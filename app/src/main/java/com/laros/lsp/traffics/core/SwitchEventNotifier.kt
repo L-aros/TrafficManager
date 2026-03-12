@@ -42,19 +42,17 @@ class SwitchEventNotifier(private val context: Context) {
             message = event.message,
             focusStatus = focusStatus
         )
-        saveActiveState(context, payload.token, TransitionPhase.MAIN)
 
         Log.d(TAG, "post main focus notification title=${payload.title} status=$focusStatus token=${payload.token}")
         manager.notify(
             AutoSwitchServiceChannels.EVENT_FOCUS_NOTIFY_ID,
             buildFocusNotification(payload, XiaomiFocusNotificationCompat.FocusMode.MAIN, silent = false)
         )
-        scheduleSummaryTransition(context, payload)
     }
 
     fun notifySummaryFromIntent(intent: Intent) {
-        val payload = payloadFromIntent(intent) ?: return
-        postSummaryNotification(payload, source = "alarm")
+        Log.d(TAG, "ignore stale summary transition action=${intent.action}")
+        cancelPendingTransitions(context)
     }
 
     private fun postSummaryNotification(payload: EventPayload, source: String) {
@@ -92,6 +90,7 @@ class SwitchEventNotifier(private val context: Context) {
             notifyId = payload.token,
             focusTitle = payload.title,
             focusSubtitle = payload.text,
+            focusStatus = payload.focusStatus,
             focusMode = focusMode
         )
         stripBigIslandCornerBadge(notification)
@@ -102,7 +101,6 @@ class SwitchEventNotifier(private val context: Context) {
         val extras = notification.extras ?: return
         sanitizeFocusParam(extras, EXTRA_MIUI_FOCUS_PARAM)
         sanitizeFocusParam(extras, EXTRA_MIUI_FOCUS_PARAM_V2)
-        extras.getBundle(EXTRA_MIUI_FOCUS_PICS)?.remove(EXTRA_MIUI_STATUS_PIC_KEY)
     }
 
     private fun sanitizeFocusParam(extras: android.os.Bundle, key: String) {
@@ -336,7 +334,6 @@ class SwitchEventNotifier(private val context: Context) {
         private const val EXTRA_MIUI_FOCUS_PICS = "miui.focus.pics"
         private const val EXTRA_MIUI_FOCUS_PARAM = "miui.focus.param"
         private const val EXTRA_MIUI_FOCUS_PARAM_V2 = "miui.focus.param_v2"
-        private const val EXTRA_MIUI_STATUS_PIC_KEY = "miui.focus.pic_tm_status"
         private const val EXTRA_FOCUS_NOTIFY_ROLE = "tm.focus.notify_role"
         private const val EXTRA_EVENT_TOKEN = "tm.focus.event_token"
         private const val EXTRA_EVENT_TITLE = "tm.focus.event_title"
